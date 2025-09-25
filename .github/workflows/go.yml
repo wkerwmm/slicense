@@ -26,8 +26,8 @@ jobs:
       - name: Archive binary
         run: |
           mkdir -p dist
-          go build -o dist/slicense ./...
-          tar -czf dist/slicense_linux_amd64.tar.gz dist/slicense
+          go build -o dist/slicense ./cmd/... || go build -o dist/slicense .
+          tar -czf dist/slicense_linux_amd64.tar.gz -C dist slicense
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
