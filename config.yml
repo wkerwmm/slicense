@@ -1,0 +1,9 @@
+mysql:
+  host: localhost
+  port: 3306
+  user: root
+  password: 
+  database: license_db
+
+server:
+  port: 8080
