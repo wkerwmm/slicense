@@ -1,10 +1,10 @@
-name: Go
+name: Go CI & Release
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - "v*.*.*"   # örnek: v1.0.0 gibi tag atarsan release olacak
 
 jobs:
   build:
@@ -22,3 +22,35 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+      - name: Archive binary
+        run: |
+          mkdir -p dist
+          go build -o dist/slicense ./...
+          tar -czf dist/slicense_linux_amd64.tar.gz dist/slicense
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slicense-build
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: slicense-build
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
