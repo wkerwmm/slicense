@@ -1,0 +1,962 @@
+openapi: 3.0.3
+info:
+  title: Enterprise License Management System API
+  description: |
+    A comprehensive, enterprise-grade license management platform with advanced security, 
+    monitoring, and scalability features. This API provides robust license management, 
+    user authentication, audit logging, and advanced security features.
+  version: 1.0.0
+  contact:
+    name: License Server Team
+    email: support@license-server.com
+    url: https://license-server.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://license-server.com/terms
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.license-server.com/v1
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Health Check Endpoints
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check the health status of the API
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: Get detailed health information including dependencies
+      security: []
+      responses:
+        '200':
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+
+  # Authentication Endpoints
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              valid_user:
+                summary: Valid user registration
+                value:
+                  username: "johndoe"
+                  email: "john@example.com"
+                  password: "SecurePass123!"
+                  password_confirm: "SecurePass123!"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user and return JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              valid_login:
+                summary: Valid user login
+                value:
+                  email: "john@example.com"
+                  password: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh JWT token
+      description: Get a new JWT token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Logout user and invalidate tokens
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+
+  /auth/profile:
+    get:
+      tags:
+        - Authentication
+      summary: Get user profile
+      description: Get current user profile information
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # License Management Endpoints
+  /licenses:
+    get:
+      tags:
+        - Licenses
+      summary: List licenses
+      description: Get a paginated list of licenses
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: product
+          in: query
+          description: Filter by product name
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by license status
+          schema:
+            type: string
+            enum: [active, expired, inactive]
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [created_at, expires_at, product, owner_name]
+            default: created_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Licenses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Licenses
+      summary: Create a new license
+      description: Create a new license for a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLicenseRequest'
+            examples:
+              basic_license:
+                summary: Basic license creation
+                value:
+                  product: "MyApp"
+                  owner_email: "user@example.com"
+                  owner_name: "John Doe"
+                  expires_in: "1y"
+                  features: ["premium", "api_access"]
+                  max_activations: 3
+      responses:
+        '201':
+          description: License created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /licenses/{id}:
+    get:
+      tags:
+        - Licenses
+      summary: Get license details
+      description: Get detailed information about a specific license
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: License ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: License details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseResponse'
+        '404':
+          description: License not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Licenses
+      summary: Update license
+      description: Update an existing license
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: License ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLicenseRequest'
+      responses:
+        '200':
+          description: License updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: License not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Licenses
+      summary: Delete license
+      description: Delete a license
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: License ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: License deleted successfully
+        '404':
+          description: License not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /licenses/verify:
+    post:
+      tags:
+        - Licenses
+      summary: Verify license
+      description: Verify a license key and return license information
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyLicenseRequest'
+            examples:
+              valid_verification:
+                summary: Valid license verification
+                value:
+                  key: "ABCD-EFGH-IJKL-MNOP"
+                  product: "MyApp"
+                  version: "1.0.0"
+                  machine_id: "unique-machine-identifier"
+      responses:
+        '200':
+          description: License verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyLicenseResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /licenses/{id}/activate:
+    post:
+      tags:
+        - Licenses
+      summary: Activate license
+      description: Activate a license on a specific machine
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: License ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateLicenseRequest'
+      responses:
+        '200':
+          description: License activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivateLicenseResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: License already activated on this machine
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Audit Logs Endpoints
+  /audit/logs:
+    get:
+      tags:
+        - Audit
+      summary: Get audit logs
+      description: Get a paginated list of audit logs
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: action
+          in: query
+          description: Filter by action type
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Start date for filtering
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End date for filtering
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Metrics Endpoints
+  /metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Prometheus metrics
+      description: Get Prometheus metrics for monitoring
+      security: []
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",endpoint="/api/v1/health",status_code="200"} 100
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+  schemas:
+    # Health Response Schemas
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime:
+          type: string
+          description: Service uptime in seconds
+
+    DetailedHealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/HealthResponse'
+        - type: object
+          properties:
+            dependencies:
+              type: object
+              properties:
+                database:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      enum: [healthy, unhealthy]
+                    response_time_ms:
+                      type: number
+                redis:
+                  type: object
+                  properties:
+                    status:
+                      type: string
+                      enum: [healthy, unhealthy]
+                    response_time_ms:
+                      type: number
+
+    # Authentication Schemas
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - password_confirm
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          pattern: '^[a-zA-Z0-9_-]+$'
+          description: Username (alphanumeric, underscore, hyphen only)
+        email:
+          type: string
+          format: email
+          description: User email address
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Password (minimum 8 characters)
+        password_confirm:
+          type: string
+          description: Password confirmation
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: JWT refresh token
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+        user:
+          $ref: '#/components/schemas/User'
+
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+
+    RefreshResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expires_in:
+          type: integer
+
+    LogoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    UserProfile:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            last_login:
+              type: string
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+
+    # License Schemas
+    CreateLicenseRequest:
+      type: object
+      required:
+        - product
+        - owner_email
+        - owner_name
+      properties:
+        product:
+          type: string
+          description: Product name
+        owner_email:
+          type: string
+          format: email
+          description: License owner email
+        owner_name:
+          type: string
+          description: License owner name
+        expires_in:
+          type: string
+          description: License expiration period (e.g., "1y", "6m", "30d")
+        features:
+          type: array
+          items:
+            type: string
+          description: License features
+        max_activations:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Maximum number of activations
+        notes:
+          type: string
+          description: Additional notes
+
+    UpdateLicenseRequest:
+      type: object
+      properties:
+        owner_email:
+          type: string
+          format: email
+        owner_name:
+          type: string
+        expires_in:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        max_activations:
+          type: integer
+          minimum: 1
+        notes:
+          type: string
+
+    LicenseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        product:
+          type: string
+        owner:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+        max_activations:
+          type: integer
+        current_activations:
+          type: integer
+        status:
+          type: string
+          enum: [active, expired, inactive]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LicenseListResponse:
+      type: object
+      properties:
+        licenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/LicenseResponse'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    VerifyLicenseRequest:
+      type: object
+      required:
+        - key
+        - product
+      properties:
+        key:
+          type: string
+          description: License key
+        product:
+          type: string
+          description: Product name
+        version:
+          type: string
+          description: Product version
+        machine_id:
+          type: string
+          description: Unique machine identifier
+
+    VerifyLicenseResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        reason:
+          type: string
+          description: Reason if license is invalid
+        license:
+          $ref: '#/components/schemas/LicenseResponse'
+        activation:
+          type: object
+          properties:
+            successful:
+              type: boolean
+            activation_id:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+
+    ActivateLicenseRequest:
+      type: object
+      required:
+        - machine_id
+      properties:
+        machine_id:
+          type: string
+          description: Unique machine identifier
+        machine_name:
+          type: string
+          description: Human-readable machine name
+        product_version:
+          type: string
+          description: Product version being activated
+
+    ActivateLicenseResponse:
+      type: object
+      properties:
+        successful:
+          type: boolean
+        activation_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    # Audit Log Schemas
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        user_id:
+          type: string
+        details:
+          type: object
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Common Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, user]
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Licenses
+    description: License management operations
+  - name: Audit
+    description: Audit logging and compliance
+  - name: Metrics
+    description: System metrics and monitoring
