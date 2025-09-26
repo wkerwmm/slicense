@@ -1,9 +1,189 @@
-mysql:
-  host: localhost
-  port: 3306
-  user: root
-  password: 
-  database: license_db
+# Enterprise License Management System Configuration
+# ================================================
 
+# Server Configuration
 server:
   port: 8080
+  host: "0.0.0.0"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+  graceful_shutdown_timeout: "30s"
+  max_header_bytes: 1048576  # 1MB
+
+# Database Configuration
+database:
+  mysql:
+    host: "localhost"
+    port: 3306
+    user: "license_user"
+    password: "${DB_PASSWORD}"
+    database: "license_db"
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: "5m"
+    conn_max_idle_time: "1m"
+    charset: "utf8mb4"
+    parse_time: true
+    loc: "UTC"
+  
+  redis:
+    host: "localhost"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    database: 0
+    pool_size: 10
+    min_idle_conns: 5
+    max_conn_age: "1h"
+    pool_timeout: "4s"
+    idle_timeout: "5m"
+    idle_check_frequency: "1m"
+
+# Security Configuration
+security:
+  jwt:
+    secret: "${JWT_SECRET}"
+    expiration: "24h"
+    refresh_expiration: "168h"  # 7 days
+    issuer: "license-server"
+    audience: "license-clients"
+  
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst: 20
+    cleanup_interval: "1m"
+    max_entries: 10000
+  
+  encryption:
+    key: "${ENCRYPTION_KEY}"
+    algorithm: "AES-256-GCM"
+  
+  cors:
+    enabled: true
+    allowed_origins: ["http://localhost:3000", "http://localhost:5173"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Accept", "Authorization", "Content-Type", "X-CSRF-Token"]
+    allow_credentials: false
+    max_age: 300
+  
+  headers:
+    enable_security_headers: true
+    content_security_policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    hsts_max_age: 31536000  # 1 year
+    frame_options: "DENY"
+    content_type_options: "nosniff"
+    xss_protection: "1; mode=block"
+    referrer_policy: "strict-origin-when-cross-origin"
+
+# Monitoring Configuration
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    namespace: "license_server"
+  
+  logging:
+    level: "info"  # debug, info, warn, error
+    format: "json"  # json, text
+    output: "stdout"  # stdout, file, both
+    file_path: "logs/license-server.log"
+    max_size: 100  # MB
+    max_backups: 3
+    max_age: 28  # days
+    compress: true
+  
+  health_checks:
+    enabled: true
+    interval: "30s"
+    timeout: "5s"
+    failure_threshold: 3
+  
+  tracing:
+    enabled: false
+    jaeger_endpoint: "http://localhost:14268/api/traces"
+    service_name: "license-server"
+    sample_rate: 0.1
+
+# Cache Configuration
+cache:
+  enabled: true
+  default_ttl: "1h"
+  cleanup_interval: "10m"
+  max_size: 1000  # entries
+  
+  # Cache-specific TTLs
+  ttl:
+    license_verification: "5m"
+    user_session: "24h"
+    license_list: "1m"
+    audit_logs: "30s"
+
+# Feature Flags
+features:
+  caching: true
+  audit_logging: true
+  metrics_collection: true
+  health_checks: true
+  rate_limiting: true
+  security_headers: true
+  cors: true
+  graceful_shutdown: true
+  request_id: true
+  real_ip: true
+  compression: true
+  request_size_limit: true
+  input_validation: true
+
+# Business Logic Configuration
+business:
+  license:
+    key_format: "XXXX-XXXX-XXXX-XXXX"
+    key_charset: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    default_expiration: "1y"
+    max_activations_default: 1
+    activation_grace_period: "24h"
+  
+  user:
+    password_min_length: 8
+    password_require_uppercase: true
+    password_require_lowercase: true
+    password_require_numbers: true
+    password_require_symbols: true
+    max_login_attempts: 5
+    lockout_duration: "15m"
+  
+  audit:
+    retention_days: 365
+    batch_size: 100
+    flush_interval: "5s"
+    max_queue_size: 10000
+
+# External Services
+external:
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username: "${EMAIL_USERNAME}"
+    password: "${EMAIL_PASSWORD}"
+    from: "noreply@license-server.com"
+  
+  webhooks:
+    enabled: false
+    timeout: "30s"
+    retry_attempts: 3
+    retry_delay: "5s"
+    endpoints:
+      license_created: "https://api.example.com/webhooks/license-created"
+      license_activated: "https://api.example.com/webhooks/license-activated"
+      license_expired: "https://api.example.com/webhooks/license-expired"
+
+# Development Configuration
+development:
+  debug: false
+  hot_reload: false
+  mock_external_services: false
+  seed_data: false
+  verbose_logging: false
